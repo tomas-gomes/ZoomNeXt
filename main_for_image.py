@@ -20,6 +20,8 @@ from tqdm import tqdm
 import methods as model_zoo
 from utils import io, ops, pipeline, pt_utils, py_utils, recorder
 
+from PIL import Image
+
 LOGGER = logging.getLogger("main")
 LOGGER.propagate = False
 LOGGER.setLevel(level=logging.DEBUG)
@@ -145,6 +147,8 @@ class Evaluator:
         model.eval()
         all_metrics = recorder.GroupedMetricRecorder(metric_names=self.metric_names)
 
+        LOGGER.info(f"Evaluation save_path: {save_path}")
+
         for batch in tqdm(data_loader, total=len(data_loader), ncols=79, desc="[EVAL]"):
             batch_images = pt_utils.to_device(batch["data"], device=self.device)
             logits = model(data=batch_images)  # B,1,H,W
@@ -157,7 +161,6 @@ class Evaluator:
             for pred_idx, pred in enumerate(probs):
                 mask_path = mask_paths[pred_idx]
                 mask_array = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-                mask_array[mask_array > 0] = 255
                 mask_h, mask_w = mask_array.shape
                 pred = ops.resize(pred, height=mask_h, width=mask_w)
 
@@ -165,15 +168,37 @@ class Evaluator:
                     pred = ops.clip_to_normalize(pred, clip_range=self.clip_range)
 
                 group_name = group_names[pred_idx]
-                if save_path:  # 这里的save_path包含了数据集名字
-                    ops.save_array_as_image(
-                        data_array=pred,
-                        save_name=os.path.basename(mask_path),
-                        save_dir=os.path.join(save_path, group_name),
-                    )
+                if save_path:
+                    save_dir = os.path.join(save_path, group_name)
+                    try:
+                        os.makedirs(save_dir, exist_ok=True)
+                        LOGGER.info(f"Created directory: {save_dir}")
+                    except OSError as e:
+                        LOGGER.error(f"Failed to create directory {save_dir}: {e}")
+                    
+                    pred_image = (pred * 255).astype(np.uint8)
+                    save_name = os.path.basename(mask_path).replace('.png', '_pred.png')
+                    full_save_path = os.path.join(save_dir, save_name)
+                    
+                    LOGGER.info(f"Attempting to save prediction to: {full_save_path}")
+                    LOGGER.info(f"Prediction shape: {pred_image.shape}, dtype: {pred_image.dtype}")
+                    LOGGER.info(f"Prediction min: {pred_image.min()}, max: {pred_image.max()}")
+                    
+                    try:
+                        img = Image.fromarray(pred_image)
+                        img.save(full_save_path)
+                        
+                        if os.path.exists(full_save_path):
+                            file_size = os.path.getsize(full_save_path)
+                            LOGGER.info(f"Successfully saved: {full_save_path} (Size: {file_size} bytes)")
+                        else:
+                            LOGGER.error(f"File not found after saving: {full_save_path}")
+                    except Exception as e:
+                        LOGGER.error(f"Failed to save {full_save_path}: {e}")
 
                 pred = (pred * 255).astype(np.uint8)
                 all_metrics.step(group_name=group_name, pre=pred, gt=mask_array, gt_path=mask_path)
+
         return all_metrics.show()
 
 
@@ -191,8 +216,11 @@ def test(model, cfg):
         if cfg.save_results:
             save_path = os.path.join(cfg.path.save, te_name)
             LOGGER.info(f"Results will be saved into {save_path}")
+            LOGGER.info(f"Save path exists: {os.path.exists(cfg.path.save)}")
+            LOGGER.info(f"Save path is writable: {os.access(cfg.path.save, os.W_OK)}")
         else:
             save_path = ""
+            LOGGER.warning("cfg.save_results is False, no results will be saved")
 
         seg_results = test_wrapper.eval(model=model, data_loader=te_loader, save_path=save_path)
         seg_results_str = ", ".join([f"{k}: {v:.03f}" for k, v in seg_results.items()])
@@ -351,6 +379,7 @@ def parse_cfg():
     cfg = Config.fromfile(args.config)
     cfg.merge_from_dict(vars(args))
 
+    print(cfg.data_cfg)
     with open(cfg.data_cfg, mode="r") as f:
         cfg.dataset_infos = yaml.safe_load(f)
 
