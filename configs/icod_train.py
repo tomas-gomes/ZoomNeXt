@@ -48,7 +48,8 @@ train = dict(
     ),
     data=dict(
         shape=dict(h=384, w=384),
-        names=["cod10k_tr", "camo_tr"],
+        names=["teste_tr"],
+        #names=["cod10k_tr", "camo_tr"],
     ),
 )
 
@@ -58,6 +59,7 @@ test = dict(
     clip_range=None,
     data=dict(
         shape=dict(h=384, w=384),
-        names=["chameleon", "camo_te", "cod10k_te", "nc4k"],
+        names=["teste_te"],
+        #names=["chameleon", "camo_te", "cod10k_te", "nc4k"],
     ),
 )
