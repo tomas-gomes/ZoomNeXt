@@ -1,0 +1,43 @@
+# VCOD Datasets
+moca_mask_tr:
+  {
+    root: "datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq",
+    image: { path: "*/Imgs", suffix: ".jpg" },
+    mask: { path: "*/GT", suffix: ".png" },
+  }
+moca_mask_te:
+  {
+    root: "datasets/MoCA-Mask/MoCA_Video/TestDataset_per_sq",
+    image: { path: "*/Imgs", suffix: ".jpg" },
+    mask: { path: "*/GT", suffix: ".png" },
+  }
+
+
+# ICOD Datasets
+cod10k_tr:
+  {
+    root: "datasets/COD10K-v3/Train",
+    image: { path: "Image", suffix: ".jpg" },
+    mask: { path: "GT_Object", suffix: ".png" },
+  }
+cod10k_te:
+  {
+    root: "datasets/COD10K-v3/Test",
+    image: { path: "Image", suffix: ".jpg" },
+    mask: { path: "GT_Object", suffix: ".png" },
+  }
+
+
+# Teste Dataset
+teste_tr:
+  {
+    root: "datasets/teste/",
+    image: { path: "train/image", suffix: ".jpg" },
+    mask: { path: "train/mask", suffix: ".png" },
+  }
+teste_te:
+  {
+    root: "datasets/teste/",
+    image: { path: "test/image", suffix: ".jpg" },
+    mask: { path: "test/mask", suffix: ".png" },
+  }
